@@ -6,11 +6,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from time import sleep, time
+from time import sleep
 from random import shuffle
 
 from wildberries_phrase import greet, no_feedback, wait_1, wait_2
-from functions import waiting_element
+from functions import waiting_element, filtering_products
 from key import TOKEN
 
 bot = telebot.TeleBot(TOKEN)
@@ -37,10 +37,7 @@ def choose_option(message):
 
 def search_actual_goods(message) -> list[str]:
     '''функция для поиска ссылок на товары с актуальными отзывами'''
-    dump_list: list = []
-    unique_items_list: list = []
-    counter_error = 1
-    initial_request = message
+
     ua = UserAgent()
     request = 'https://www.wildberries.ru/catalog/0/search.aspx?search=' + '%20'.join(message.text.lower().split())
     # успокаиваем пользователя, пишем что ждать осталось недолго
@@ -53,55 +50,25 @@ def search_actual_goods(message) -> list[str]:
             browser.get(request)
             # как только элемент становится доступен - прокручиваем страницу вниз
             waiting_element(browser, 'product-card--hoverable')
-
-            # прокурчиваем страницу 15 раз чтобы получить все элементы
+            # прокручиваем страницу 14 раз чтобы получить все элементы
             [(browser.execute_script("window.scrollBy(0, 900)"), sleep(0.1)) for i in range(14)]
             all_goods_on_sheet = browser.find_elements(By.CLASS_NAME, 'j-card-item')
             # фильтруем записи без оценок, с оценкой 5 и повторяющиеся записи
-            for i in all_goods_on_sheet[1::]:
-                # название магазина
-                product_card_brand = i.find_element(By.CLASS_NAME, 'product-card__brand').text
-                # общая категория товаров
-                product_card_name = i.find_element(By.CLASS_NAME, 'product-card__name').text
-                # количество отзывов
-                product_card_count = int(i.find_element(By.CLASS_NAME, 'product-card__count').text.split()[0])
-                # средняя оценка
-                product_grade = float(i.find_element(By.CLASS_NAME, 'address-rate-mini--sm').text)
-                # в условии добавляем эл-т в список в зависимости от кол-ва оценок и среднего балла
-                print(product_card_brand, product_card_name, product_card_count, product_grade, sep='\n')
-                print()
-                if product_grade <= 4.7 and 30 < product_card_count < 250 and [product_card_brand, product_card_name] not in dump_list:
-                    # добавляем ссылку на этот элемент в список
-                    item = i.find_element(By.CLASS_NAME, 'product-card__link').get_attribute('href')
-                    dump_list.append([product_card_brand, product_card_name])
-                    unique_items_list.append(item)
-                elif product_grade <= 4.9 and product_card_count >= 150 and [product_card_brand, product_card_name] not in dump_list:
-                    # добавляем ссылку на этот элемент в список
-                    item = i.find_element(By.CLASS_NAME, 'product-card__link').get_attribute('href')
-                    dump_list.append([product_card_brand, product_card_name])
-                    unique_items_list.append(item)
-                print(unique_items_list, '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                if unique_items_list:
-                    get_feedback(message, unique_items_list)
-                    break
-                else:
-                    if counter_error == 3:
-                        bot.send_message(message.chat.id, 'Не получилось найти отзывы. Можно попробовать еще раз или немного изменить запрос')
-                        break
-        except Exception:
-            counter_error += 1
-            if counter_error == 3:
-                bot.send_message(message.chat.id, 'Что-то пошло не так в поиске товара. Можно попробовать еще раз или немного изменить запрос.')
-                bot.send_message(message.chat.id, 'Искать отзывы')
+            unique_links_list = filtering_products(all_goods_on_sheet)
+            if unique_links_list:
+                print('Лист не пустой, выполняется функция get_feedback()')
+                get_feedback(message, unique_links_list)
             else:
-                search_actual_goods(initial_request)
+                bot.send_message(message.chat.id, 'Не получилось найти отзывы. Можно попробовать еще раз или немного изменить запрос')
+        except Exception:
+            bot.send_message(message.chat.id, 'Что-то пошло не так в поиске товара. Можно попробовать еще раз или немного изменить запрос.')
+            bot.send_message(message.chat.id, 'Искать отзывы')
 
 
 def get_feedback(message, links_list: list) -> str:
     '''получаем отзывы с одной звездой на товар'''
     minor_feedback = set()
     shuffle(links_list)
-    print(links_list)
     ua = UserAgent()
     options = Options()
     options.add_argument(f'--user-agent={ua.random}')
@@ -109,36 +76,44 @@ def get_feedback(message, links_list: list) -> str:
         try:
             # переходим на страницу с товаром
             browser.get(links_list[0])
-            sleep(2)
-            print('перешли на страницу товара' - links_list[0])
+            browser.maximize_window()
             # ищем элементы, если есть проверка на возраст
+            sleep(1)
             adult_or_not = browser.find_elements(By.CLASS_NAME, 'popup__btn-main')
-            print(adult_or_not[0])
             if len(adult_or_not) == 2:
-                print('зашли в if возрастным ограничением')
                 # задаем ожидание, если появилось окошко подтверждения совершеннолетия
                 waiting_element(browser, 'popup__btn-main')
                 adult_or_not[0].click()
             # задаем ожидание доступности элемента
+            sleep(1)
             waiting_element(browser, 'product-page__grid')
-            browser.maximize_window()
-            print('максимизировали окно')
             # успокаиваем пользователя, пишем что ему осталось еще немного
             bot.send_message(message.chat.id, wait_2)
             # получаем страницу с отзывами
             marks_sheet = browser.find_element(By.ID, 'comments_reviews_link').get_attribute('href')
-            print(f'print(marks_sheet) - {marks_sheet}')
             browser.get(marks_sheet)
+            sleep(2)
+
+            adult_or_not = browser.find_elements(By.CLASS_NAME, 'popup__btn-main')
+            if len(adult_or_not) == 2:
+                # задаем ожидание, если появилось окошко подтверждения совершеннолетия
+                adult_or_not[0].click()
+                print('кликнули на согласие')
+
+            sleep(1)
             # задаем ожидание доступности элемента
-            WebDriverWait(browser, 10).until(
-                EC.element_to_be_clickable(
-                    (By.CLASS_NAME, "user-activity__tab-content")))
+            waiting_element(browser, 'user-activity__tab-content')
             # получаем название и общую информацию о товаре
+            print('получаем информацию о товаре')
             brand_name, general_name = map(
                 lambda x: x.capitalize(), browser.find_element(
                     By.CLASS_NAME, 'product-line__name').text.split(' / '))
+            print('получили брэнд и имя - ', brand_name, general_name)
             # меняем порядок отзывов начиная с отрицательных
+            # sleep(1)
             [browser.find_element(By.CSS_SELECTOR, 'section>div>div>div>ul>li:nth-child(2)>a').click() for i in range(2)]
+            print('изменили порядок по оценке')
+            sleep(1)
             # прокручиваем страницу отзывов двадцать+ раз вниз
             [(browser.execute_script("window.scrollBy(0, 900)"), sleep(0.1)) for i in range(10)]
             all_feedback_for_this_product = browser.find_elements(By.CLASS_NAME, 'j-feedback-slide')
