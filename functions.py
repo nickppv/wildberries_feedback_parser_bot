@@ -85,6 +85,8 @@ def collect_feedback(browser):
 
 
 def finish_output_message(minor_feedback, bot, message):
+    '''функция вывода результатов поиска'''
+
     if len(minor_feedback) == 0:
         bot.send_message(message.chat.id, no_feedback)
     elif len(minor_feedback) > 5:

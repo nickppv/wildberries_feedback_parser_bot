@@ -41,62 +41,47 @@ def search_actual_goods(message) -> list[str]:
     request = 'https://www.wildberries.ru/catalog/0/search.aspx?search=' + '%20'.join(message.text.lower().split())
     # успокаиваем пользователя, пишем что ждать осталось недолго
     bot.send_message(message.chat.id, wait_1)
-    options = Options()
+    # options = Options()
     # options.add_argument('--headless')
-    with webdriver.Chrome(options=options) as browser:
+    with webdriver.Chrome() as browser:
         try:
             browser.get(request)
             # как только элемент становится доступен - прокручиваем страницу вниз
             waiting_element_to_show(browser, 'product-card-list')
             # прокручиваем страницу 14 раз чтобы получить все элементы
-            [(browser.execute_script("window.scrollBy(0, 900)"), sleep(0.1)) for i in range(14)]
+            [(browser.execute_script("window.scrollBy(0, 900)"), sleep(0.05)) for i in range(14)]
             all_goods_on_sheet = browser.find_elements(By.CLASS_NAME, 'j-card-item')
             # фильтруем записи без оценок, с оценкой 5 и повторяющиеся записи
             unique_links_list = filtering_products(all_goods_on_sheet)
             if unique_links_list:
-                get_feedback(message, unique_links_list)
+                # get_feedback(message, unique_links_list)
+                shuffle(unique_links_list)
+                browser.get(unique_links_list[0])
+                browser.maximize_window()
+                sleep(2)
+                check_adult(browser)
+                # ожидаем загрузки страницы с конкретным товаром
+                waiting_element_to_show(browser, 'product-page__grid')
+                # успокаиваем пользователя, пишем что ему осталось еще немного
+                bot.send_message(message.chat.id, wait_2)
+                # получаем страницу с отзывами
+                marks_sheet = browser.find_element(By.ID, 'comments_reviews_link').get_attribute('href')
+                browser.get(marks_sheet)
+                print('получили страницу с отзывами')
+                sleep(2)
+                check_adult(browser)
+                # задаем ожидание доступности элемента
+                waiting_element_to_show(browser, 'product-feedbacks__main')
+                # меняем порядок отзывов начиная с отрицательных
+                [browser.find_element(By.CSS_SELECTOR, 'section>div>div>div>ul>li:nth-child(2)>a').click() for i in range(2)]
+                # получаем все отзывы
+                minor_feedback = collect_feedback(browser)
+                finish_output_message(minor_feedback, bot, message)
             else:
                 bot.send_message(message.chat.id, 'Не получилось найти отзывы. Можно попробовать еще раз или немного изменить запрос')
         except Exception:
             bot.send_message(message.chat.id, 'Что-то пошло не так в поиске товара. Можно попробовать еще раз или немного изменить запрос.')
             bot.send_message(message.chat.id, 'Искать отзывы')
-
-
-def get_feedback(message, links_list: list) -> str:
-    '''получаем отзывы с одной звездой на товар'''
-
-    shuffle(links_list)
-    options = Options()
-    # options.add_argument('--headless')
-    with webdriver.Chrome(options=options) as browser:
-        try:
-            # переходим на страницу с товаром
-            browser.get(links_list[0])
-            browser.maximize_window()
-            sleep(2)
-            # ищем элементы, если есть проверка на возраст
-            check_adult(browser)
-            # ожидаем загрузки страницы с конкретным товаром
-            waiting_element_to_show(browser, 'product-page__grid')
-            # успокаиваем пользователя, пишем что ему осталось еще немного
-            bot.send_message(message.chat.id, wait_2)
-            # получаем страницу с отзывами
-            marks_sheet = browser.find_element(By.ID, 'comments_reviews_link').get_attribute('href')
-            browser.get(marks_sheet)
-            print('получили страницу с отзывами')
-            sleep(2)
-            check_adult(browser)
-            # задаем ожидание доступности элемента
-            waiting_element_to_show(browser, 'product-feedbacks__main')
-            # меняем порядок отзывов начиная с отрицательных
-            [browser.find_element(By.CSS_SELECTOR, 'section>div>div>div>ul>li:nth-child(2)>a').click() for i in range(2)]
-            # получаем все отзывы
-            minor_feedback = collect_feedback(browser)
-            finish_output_message(minor_feedback, bot, message)
-
-        except Exception:
-            bot.send_message(message.chat.id, 'Что-то пошло не так в поиске отзыва на товар. Можно попробовать еще раз или немного изменить запрос.\nИтак, что будем искать?')
-            bot.register_next_step_handler(message, search_actual_goods)
 
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
         btn1 = types.KeyboardButton('Да! Ищем!')
