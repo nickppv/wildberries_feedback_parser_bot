@@ -10,7 +10,7 @@ from time import sleep
 from random import shuffle
 
 from wildberries_phrase import greet, no_feedback, wait_1, wait_2
-from functions import waiting_element_to_show, filtering_products, check_adult, collect_feedback
+from functions import waiting_element_to_show, filtering_products, check_adult, collect_feedback, finish_output_message
 from key import TOKEN
 
 bot = telebot.TeleBot(TOKEN)
@@ -92,21 +92,12 @@ def get_feedback(message, links_list: list) -> str:
             [browser.find_element(By.CSS_SELECTOR, 'section>div>div>div>ul>li:nth-child(2)>a').click() for i in range(2)]
             # получаем все отзывы
             minor_feedback = collect_feedback(browser)
+            finish_output_message(minor_feedback, bot, message)
 
         except Exception:
             bot.send_message(message.chat.id, 'Что-то пошло не так в поиске отзыва на товар. Можно попробовать еще раз или немного изменить запрос.\nИтак, что будем искать?')
             bot.register_next_step_handler(message, search_actual_goods)
 
-        if len(minor_feedback) == 0:
-            bot.send_message(message.chat.id, no_feedback)
-        elif len(minor_feedback) > 5:
-            bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}":')
-            for i in range(5):
-                bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
-        else:
-            bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}"')
-            for i in range(len(minor_feedback)):
-                bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
         btn1 = types.KeyboardButton('Да! Ищем!')
         btn2 = types.KeyboardButton('Не надо ничего искать')

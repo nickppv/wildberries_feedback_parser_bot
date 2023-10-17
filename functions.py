@@ -1,8 +1,11 @@
+import telebot
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from time import sleep
+
+from wildberries_phrase import no_feedback
 
 
 def waiting_element_to_click(browser, elem):
@@ -80,3 +83,15 @@ def collect_feedback(browser):
         minor_feedback.add((brand_name, general_name, username, feedback_text, feedback_date))
     return list(minor_feedback)
 
+
+def finish_output_message(minor_feedback, bot, message):
+    if len(minor_feedback) == 0:
+        bot.send_message(message.chat.id, no_feedback)
+    elif len(minor_feedback) > 5:
+        bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}":')
+        for i in range(5):
+            bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}"')
+        for i in range(len(minor_feedback)):
+            bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
