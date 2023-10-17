@@ -71,7 +71,7 @@ def collect_feedback(browser):
         if 'star1' == feedback_rating[2]:
             username = feedback.find_element(
                 By.CLASS_NAME, 'feedback__header').text
-            username = ', который не указал своего имени,' if username == 'Покупатель Wildberries' else username
+            username = ', который не указал своего имени,' if username == 'Покупатель Wildberries' else ' ' + username
             feedback_text = feedback.find_element(
                 By.CLASS_NAME, 'feedback__text').text
             feedback_date = ' в '.join(feedback.find_element(

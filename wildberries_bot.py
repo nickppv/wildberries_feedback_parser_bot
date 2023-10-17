@@ -102,11 +102,11 @@ def get_feedback(message, links_list: list) -> str:
         elif len(minor_feedback) > 5:
             bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}":')
             for i in range(5):
-                bot.send_message(message.chat.id, f'<i>Покупатель {minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
+                bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
         else:
             bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}"')
             for i in range(len(minor_feedback)):
-                bot.send_message(message.chat.id, f'<i>Покупатель {minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
+                bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
         btn1 = types.KeyboardButton('Да! Ищем!')
         btn2 = types.KeyboardButton('Не надо ничего искать')
