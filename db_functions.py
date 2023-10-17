@@ -8,12 +8,17 @@ def write_user_on_start(message):
     conn = sqlite3.connect('db_wb.sqlite3')
     # объект "курсор" позволяет делать запросы к БД
     cursor = conn.cursor()
-    cursor.execute('CREATE TABLE IF NOT EXISTS users (user_id INT PRIMARY KEY, name VARCHAR(64), surname VARCHAR(64), username VARCHAR(32), date VARCHAR(30))')
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS users (
+            user_id INT PRIMARY KEY,
+            name VARCHAR(64),
+            surname VARCHAR(64),
+            username VARCHAR(32),
+            date VARCHAR(30))'''
+            )
     # получаем данные из БД и сравниваем на дублирование записей
     cursor.execute('SELECT user_id FROM users')
     users_data = cursor.fetchall()
-    print(users_data)
-    print()
     users_data = [int(i[0]) for i in users_data if len(users_data) > 0]
     print(users_data)
     if message.from_user.id not in users_data:
@@ -26,7 +31,10 @@ def write_user_on_start(message):
             datetime.now().strftime("%d.%m.%Y, %H:%M")
             )
         # метод с вопросительными знаками позволяет защититься от sql-инъекций
-        cursor.execute("INSERT INTO users (user_id, name, surname, username, date) VALUES (?, ?, ?, ?, ?)", user)
+        cursor.execute(
+            '''INSERT INTO users (
+                user_id, name, surname, username, date
+                ) VALUES (?, ?, ?, ?, ?)''', user)
         conn.commit()
         print('добавили юзера в бд')
     cursor.close()
@@ -39,9 +47,11 @@ def add_feedback(minor_feedback):
     print('функция добавления отызва запустилась')
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
-    print('создаем таблицу')
-    cursor.execute('CREATE TABLE IF NOT EXISTS wb_feedback (feedback_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, product_name VARCHAR(255), username VARCHAR(150), feedback TEXT, rating INT)')
-    print('создали таблицу отзывов')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS wb_feedback (
+                   feedback_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                   product_name VARCHAR(255), username VARCHAR(150),
+                   feedback TEXT, rating INT
+                   )''')
     print(minor_feedback)
     product_name = minor_feedback[0][1] + ' ' + minor_feedback[0][0]
     print(product_name)
@@ -49,8 +59,10 @@ def add_feedback(minor_feedback):
         for i in minor_feedback:
             data = (product_name, i[2], i[3], 0)
             print('data -', data)
-            cursor.execute('INSERT INTO wb_feedback (product_name, username, feedback, rating) VALUES (?, ?, ?, ?)', data)
-            print('добавили отзыв в бд')
+            cursor.execute(
+                '''INSERT INTO wb_feedback (
+                    product_name, username, feedback, rating
+                    ) VALUES (?, ?, ?, ?)''', data)
     else:
         print('отзыв не был добавлен, т.к. уже есть такой продукт в БД')
     conn.commit()
@@ -59,16 +71,14 @@ def add_feedback(minor_feedback):
 
 
 def search_same_records(record):
-    '''функция ищет такие записи в БД'''
+    '''функция ищет записи-дубликаты в БД'''
 
-    print('вошли в функцию поиска дубликатов')
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
-    print('выбираем записи')
+    # такой способ форматирования строки, т.к. f-строка не работает с sqlite
     cursor.execute('SELECT product_name FROM wb_feedback WHERE product_name = "%s"' % record)
-    print('прошли выборку из БД')
     res = cursor.fetchall()
-    print('res -', res)
+    print('результат выборки записей-дубликатов из БД -', res)
     cursor.close()
     conn.close()
     return res
