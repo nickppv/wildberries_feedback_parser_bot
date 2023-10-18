@@ -1,4 +1,5 @@
 import telebot
+from telebot import types
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -67,7 +68,6 @@ def collect_feedback(browser):
     [(browser.execute_script("window.scrollBy(0, 900)"), sleep(0.1)) for i in range(10)]
     minor_feedback = set()
     all_feedback_for_this_product = browser.find_elements(By.CLASS_NAME, 'j-feedback-slide')
-    print('получаем информацию об отзыве')
     for feedback in all_feedback_for_this_product:
         # ищем все отзывы и отсеиваем все больше 1-ой звезды
         feedback_rating = feedback.find_element(By.CLASS_NAME, 'feedback__rating').get_attribute('class').split()
@@ -91,9 +91,27 @@ def finish_output_message(minor_feedback, bot, message):
         bot.send_message(message.chat.id, no_feedback)
     elif len(minor_feedback) > 5:
         bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}":')
-        for i in range(5):
+        for i in range(6):
             bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
+        return minor_feedback[:6]
     else:
         bot.send_message(message.chat.id, f'Несколько отзывов о товаре "{minor_feedback[0][1]} {minor_feedback[0][0]}"')
         for i in range(len(minor_feedback)):
             bot.send_message(message.chat.id, f'<i>Покупатель{minor_feedback[i][2]} {minor_feedback[i][4]} написал гневный отзыв:</i> <b>"{minor_feedback[i][3]}"</b>', parse_mode='html')
+        return minor_feedback
+
+
+def buttons_for_feedback(markup, limit_to_six):
+    if len(limit_to_six) % 2 == 0:
+        for i in range(1, len(limit_to_six), 2):
+            markup.row(types.KeyboardButton(i), types.KeyboardButton(i+1))
+    elif len(limit_to_six) % 3 == 0:
+        for i in range(1, len(limit_to_six), 3):
+            markup.row(types.KeyboardButton(i), types.KeyboardButton(i+1), types.KeyboardButton(i+2))
+    elif len(limit_to_six) == 5:
+        for i in range(1, len(limit_to_six), 5):
+            markup.row(types.KeyboardButton(i), types.KeyboardButton(i+1), types.KeyboardButton(i+2))
+        markup.row(types.KeyboardButton(limit_to_six[len(limit_to_six[-2])]), limit_to_six[len(limit_to_six[-1])])
+    else:
+        for i in range(1, len(limit_to_six)+1):
+            markup.row(types.KeyboardButton(i))
