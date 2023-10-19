@@ -86,15 +86,45 @@ def search_same_records(record, feedback_text):
 def vote_for_feedback(elem):
     '''функция обновляет рейтинг, увеличивая его на единицу'''
 
-    print('вошли в функцию голосования за отзыв - vote_for_feedback')
-    product_name = elem[1] + ' ' + elem[0]
-    feedback_text = elem[3]
+    # условие создано для того чтобы этой функцией можно было пользоваться:
+    # 1 - для голосования после поиска на сайте; 2 - для голосования из БД
+    if len(elem) == 5:
+        product_name = elem[1] + ' ' + elem[0]
+        feedback_text = elem[3]
+    else:
+        product_name = elem[0]
+        feedback_text = elem[2]
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
     cursor.execute('UPDATE wb_feedback SET rating=rating+1 WHERE product_name = "%s" and feedback = "%s"' % (product_name, feedback_text))
-    res = cursor.fetchone()
     conn.commit()
     cursor.close()
     conn.close()
     print('обновили рейтинг отзыва с продуктом и текстом: ', product_name, feedback_text, sep='\n')
-    print(res)
+
+
+def get_the_most_terrible():
+    '''получить подборку из десяти самых отвратительных отзывов'''
+
+    conn = sqlite3.connect('db_wb.sqlite3')
+    cursor = conn.cursor()
+    res = cursor.execute('SELECT product_name, username, feedback, rating FROM wb_feedback ORDER BY rating DESC LIMIT 6')
+    result = [i for i in res]
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return result
+
+
+# def get_random_records():
+#     '''получаем случайные шесть записей из БД'''
+
+#     conn = sqlite3.connect('db_wb.sqlite3')
+#     cursor = conn.cursor()
+#     cursor.execute('SELECT product_name FROM wb_feedback WHERE product_name = "%s" and feedback = "%s"' % (record, feedback_text))
+#     res = cursor.fetchall()
+#     for i in result:
+#         print(i)
+#     cursor.close()
+#     conn.close()
+#     return res
