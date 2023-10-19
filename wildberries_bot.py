@@ -1,5 +1,5 @@
 import telebot
-from telebot import types
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,7 +9,7 @@ from random import shuffle
 
 from wildberries_phrase import greet, no_feedback, wait_1, wait_2
 from functions import waiting_element_to_show, filtering_products, check_adult, collect_feedback, finish_output_message, buttons_for_feedback
-from db_functions import write_user_on_start, add_feedback, vote_for_feedback
+from db_functions import write_user_on_start, add_feedback, vote_for_feedback, get_the_most_terrible
 from key import TOKEN
 
 bot = telebot.TeleBot(TOKEN)
@@ -19,17 +19,19 @@ bot = telebot.TeleBot(TOKEN)
 def start(message):
     # bot.send_message(message.chat.id, greet)
     write_user_on_start(message)
-    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    btn1 = types.KeyboardButton('Искать отзывы')
-    btn2 = types.KeyboardButton('Не надо ничего искать')
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    btn1 = KeyboardButton('Искать отзывы на сайте WB')
+    btn2 = KeyboardButton('Выбрать подборку отзывов из БД')
+    btn3 = KeyboardButton('Посмотреть шесть самых упоротых записей')
+    btn4 = KeyboardButton('Не надо ничего искать')
     markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
     bot.send_message(message.chat.id, greet, reply_markup=markup)
 
 
-@bot.message_handler(content_types=['text'])
+@bot.message_handler(func=lambda message: message.text in ('Искать отзывы на сайте WB', 'Продолжить поиск на сайте WB', 'Не надо ничего искать'))
 def choose_option(message):
-    # сделать следующую строку короче, поместив все в кортеж
-    if message.text == 'Искать отзывы' or message.text == 'Да! Ищем!':
+    if message.text in ('Искать отзывы на сайте WB', 'Продолжить поиск на сайте WB'):
         bot.send_message(message.chat.id, 'Введите категорию или название товара для поиска.')
         bot.register_next_step_handler(message, search_actual_goods)
     elif message.text == 'Не надо ничего искать':
@@ -80,12 +82,15 @@ def search_actual_goods(message) -> list[str]:
                 bot.send_message(message.chat.id, 'Не получилось найти отзывы. Можно попробовать еще раз или немного изменить запрос')
         except Exception:
             bot.send_message(message.chat.id, 'Что-то пошло не так в поиске товара. Можно попробовать еще раз или немного изменить запрос.')
-            bot.send_message(message.chat.id, 'Искать отзывы')
+            bot.send_message(message.chat.id, 'Искать отзывы на сайте WB')
 
-    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    btn1 = types.KeyboardButton('Да! Ищем!')
-    btn2 = types.KeyboardButton('Не надо ничего искать')
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    btn1 = KeyboardButton('Продолжить поиск на сайте WB')
+    btn2 = KeyboardButton('Выбрать подборку отзывов из БД')
+    btn3 = KeyboardButton('Посмотреть шесть самых упоротых записей')
+    btn4 = KeyboardButton('Не надо ничего искать')
     markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
     buttons_for_feedback(markup, limit_to_six)
     bot.send_message(message.chat.id, 'Какой отзыв в этой подборке вы считаете самым неадекватным? Можете проголосовать или продолжить поиск среди этой цитадели истерик, малограмотности, отчаяния и "верните 100 рублей за возврат"', reply_markup=markup)
     bot.register_next_step_handler(message, to_vote_or_continue_searching, limit_to_six)
@@ -94,18 +99,49 @@ def search_actual_goods(message) -> list[str]:
 def to_vote_or_continue_searching(message, limit_to_six):
     '''функция голосования или продолжения поиска'''
 
-    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    btn1 = types.KeyboardButton('Да! Ищем!')
-    btn2 = types.KeyboardButton('Не надо ничего искать')
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    btn1 = KeyboardButton('Продолжить поиск на сайте WB')
+    btn2 = KeyboardButton('Выбрать подборку отзывов из БД')
+    btn3 = KeyboardButton('Посмотреть шесть самых упоротых записей')
+    btn4 = KeyboardButton('Не надо ничего искать')
     markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
+    # в условии определяем за какой номер отдаем голос или же продолжаем поиск
     if message.text.isdigit() and 0 < int(message.text) <= len(limit_to_six):
         elem_index = int(message.text)-1
         vote_for_feedback(limit_to_six[elem_index])
         bot.send_message(message.chat.id, 'Ваш голос учтен и сохранен! Ищем дальше?', reply_markup=markup)
-    elif message.text == 'Да! Ищем!' or message.text == 'Не надо ничего искать':
+    elif message.text == 'Продолжить поиск на сайте WB' or message.text == 'Не надо ничего искать':
         choose_option(message)
     else:
         bot.send_message(message.chat.id, 'Я не понял ваш запрос. Давайте лучше попробуем найти какой-нибудь потрясный отзыв?!')
+
+
+@bot.message_handler(func=lambda message: message.text == 'Посмотреть шесть самых упоротых записей')
+def get_the_most_terrible_and_vote(message):
+    '''получить шесть записей с высшим рейтингом'''
+
+    result = get_the_most_terrible()
+    for i in result:
+        bot.send_message(message.chat.id, f'<b>Место №{result.index(i)+1}. Рейтинг - {i[3]}: {i[0]}</b>\n<i>Покупатель{i[1]} написал гневный отзыв:</i>\n<b>"{i[2]}"</b>', parse_mode='html')
+    print(*result, sep='\n')
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+    btn1 = KeyboardButton('Продолжить поиск на сайте WB')
+    btn2 = KeyboardButton('Выбрать подборку отзывов из БД')
+    btn3 = KeyboardButton('Не надо ничего искать')
+
+    markup.row(btn1)
+    markup.row(btn2)
+    markup.row(btn3)
+    buttons_for_feedback(markup, result)
+    bot.send_message(message.chat.id, 'Какой отзыв в этой подборке вы считаете самым неадекватным? Можете проголосовать или продолжить поиск среди этой цитадели истерик, малограмотности, отчаяния и "верните 100 рублей за возврат"', reply_markup=markup)
+    bot.register_next_step_handler(message, to_vote_or_continue_searching, result)
+
+
+
+# @bot.message_handler(func=lambda message: message.text == 'Выбрать подборку отзывов из БД')
+# def get_random_records_from_db_and_vote():
+#     pass
 
 
 bot.polling(none_stop=True)
