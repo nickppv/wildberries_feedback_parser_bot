@@ -116,15 +116,27 @@ def get_the_most_terrible():
     return result
 
 
-# def get_random_records():
-#     '''получаем случайные шесть записей из БД'''
+def get_count_db_records():
+    '''получаем общее количество записей в БД'''
 
-#     conn = sqlite3.connect('db_wb.sqlite3')
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT product_name FROM wb_feedback WHERE product_name = "%s" and feedback = "%s"' % (record, feedback_text))
-#     res = cursor.fetchall()
-#     for i in result:
-#         print(i)
-#     cursor.close()
-#     conn.close()
-#     return res
+    conn = sqlite3.connect('db_wb.sqlite3')
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(feedback_id) as cnt FROM wb_feedback')
+    result = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    return result
+
+
+def get_random_records(id_values):
+    '''получаем случайные шесть записей из БД'''
+
+    conn = sqlite3.connect('db_wb.sqlite3')
+    cursor = conn.cursor()
+    cursor.execute('SELECT product_name, username, feedback, rating FROM wb_feedback WHERE feedback_id in {}'.format(id_values))
+    result = cursor.fetchall()
+    print('res', result)
+    print('*res -', *result)
+    cursor.close()
+    conn.close()
+    return result
