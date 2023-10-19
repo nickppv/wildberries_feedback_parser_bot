@@ -1,5 +1,5 @@
 import telebot
-from telebot import types
+from telebot.types import KeyboardButton as KB
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -102,16 +102,6 @@ def finish_output_message(minor_feedback, bot, message):
 
 
 def buttons_for_feedback(markup, limit_to_six):
-    if len(limit_to_six) % 2 == 0:
-        print('вывод limit_to_six в ф-ции создания кнопок для голосования - ', limit_to_six)
-        for i in range(1, len(limit_to_six), 2):
-            markup.row(types.KeyboardButton(i), types.KeyboardButton(i+1))
-    elif len(limit_to_six) % 3 == 0:
-        for i in range(1, len(limit_to_six), 3):
-            markup.row(types.KeyboardButton(i), types.KeyboardButton(i+1), types.KeyboardButton(i+2))
-    elif len(limit_to_six) == 5:
-        markup.row(types.KeyboardButton(1), types.KeyboardButton(2), types.KeyboardButton(3))
-        markup.row(types.KeyboardButton(4), types.KeyboardButton(5))
-    else:
-        for i in range(1, len(limit_to_six)+1):
-            markup.row(types.KeyboardButton(i))
+    '''создание кнопок для подборки отзывов с сайта WB'''
+
+    markup.row(*[KB(i) for i in range(1, len(limit_to_six)+1)])
