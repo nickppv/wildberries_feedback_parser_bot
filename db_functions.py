@@ -44,7 +44,6 @@ def write_user_on_start(message):
 def add_feedback(limit_to_six):
     '''функция добавления отзыва в БД'''
 
-    print('функция добавления отызва запустилась')
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS wb_feedback (
@@ -76,7 +75,7 @@ def search_same_records(record, feedback_text):
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
     # такой способ форматирования строки, т.к. f-строка не работает с sqlite
-    cursor.execute('SELECT product_name FROM wb_feedback WHERE product_name = "%s" and feedback = "%s"' % (record, feedback_text))
+    cursor.execute("SELECT product_name FROM wb_feedback WHERE product_name = '%s' and feedback = '%s'" % (record, feedback_text))
     res = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -96,7 +95,7 @@ def vote_for_feedback(elem):
         feedback_text = elem[2]
     conn = sqlite3.connect('db_wb.sqlite3')
     cursor = conn.cursor()
-    cursor.execute('UPDATE wb_feedback SET rating=rating+1 WHERE product_name = "%s" and feedback = "%s"' % (product_name, feedback_text))
+    cursor.execute("UPDATE wb_feedback SET rating=rating+1 WHERE product_name = '%s' and feedback = '%s'" % (product_name, feedback_text))
     conn.commit()
     cursor.close()
     conn.close()
@@ -135,8 +134,7 @@ def get_random_records(id_values):
     cursor = conn.cursor()
     cursor.execute('SELECT product_name, username, feedback, rating FROM wb_feedback WHERE feedback_id in {}'.format(id_values))
     result = cursor.fetchall()
-    print('res', result)
-    print('*res -', *result)
+    print('Результат получения шести случайных записей -', *result)
     cursor.close()
     conn.close()
     return result
